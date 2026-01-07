@@ -1,0 +1,68 @@
+# Post-installation hooks for garuda-testdrive-settings
+
+post_install() {
+    echo ""
+    echo "=============================================="
+    echo "  Garuda Linux Test-Drive Edition Installed!"
+    echo "=============================================="
+    echo ""
+    echo "  Included Desktop Environments:"
+    echo "    - KDE Plasma"
+    echo "    - GNOME"
+    echo "    - XFCE"
+    echo ""
+    echo "  How to switch DEs:"
+    echo "    1. At login screen: Use the session selector"
+    echo "    2. At boot: Select from GRUB menu"
+    echo "    3. CLI: garuda-de-selector set <de>"
+    echo ""
+    echo "  Documentation: /usr/share/doc/garuda-testdrive/"
+    echo ""
+    echo "  Setting up GRUB menu entries..."
+
+    # Enable SDDM as display manager
+    systemctl enable sddm.service 2>/dev/null || true
+
+    # Disable other display managers
+    systemctl disable gdm.service 2>/dev/null || true
+    systemctl disable lightdm.service 2>/dev/null || true
+
+    # Update GRUB to add DE selection menu
+    if command -v update-grub &> /dev/null; then
+        update-grub 2>/dev/null || true
+    fi
+
+    echo ""
+    echo "  Setup complete! Reboot to experience Test-Drive."
+    echo ""
+}
+
+post_upgrade() {
+    echo "==> Garuda Test-Drive settings upgraded!"
+
+    # Refresh GRUB entries
+    if command -v update-grub &> /dev/null; then
+        update-grub 2>/dev/null || true
+    fi
+}
+
+pre_remove() {
+    echo "==> Removing Garuda Test-Drive settings..."
+    echo "    Note: Installed DEs will remain on the system."
+    echo "    You may want to install a single DE settings package."
+}
+
+post_remove() {
+    # Update GRUB to remove DE selection menu
+    if command -v update-grub &> /dev/null; then
+        update-grub 2>/dev/null || true
+    fi
+
+    echo ""
+    echo "==> Garuda Test-Drive removed."
+    echo "    Consider installing one of these for a single-DE setup:"
+    echo "      - garuda-kde-settings"
+    echo "      - garuda-gnome-settings"
+    echo "      - garuda-xfce-settings"
+    echo ""
+}

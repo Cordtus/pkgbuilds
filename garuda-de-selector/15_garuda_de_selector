@@ -1,0 +1,155 @@
+#!/bin/bash
+# Garuda Linux Desktop Environment Selector - GRUB Menu Generator
+# This script generates GRUB menu entries for each enabled desktop environment
+
+set -e
+
+# Source configuration
+CONFIG_FILE="/etc/garuda/de-selector.conf"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+else
+    echo "Warning: DE selector config not found at $CONFIG_FILE" >&2
+    exit 0
+fi
+
+# Exit if DE selection is disabled
+if [[ "$GRUB_DE_SELECTION_ENABLED" != "yes" ]]; then
+    exit 0
+fi
+
+# Source GRUB defaults
+. /usr/share/grub/grub-mkconfig_lib
+
+# Get the root device and kernel parameters
+GRUB_DEVICE_UUID="$(grub-probe --target=fs_uuid /)"
+GRUB_CMDLINE="${GRUB_CMDLINE_LINUX_DEFAULT:-quiet splash}"
+
+# Function to get display name for DE
+get_de_display_name() {
+    case "$1" in
+        kde)      echo "KDE Plasma" ;;
+        gnome)    echo "GNOME" ;;
+        xfce)     echo "XFCE" ;;
+        cinnamon) echo "Cinnamon" ;;
+        mate)     echo "MATE" ;;
+        hyprland) echo "Hyprland (Wayland)" ;;
+        sway)     echo "Sway (Wayland)" ;;
+        wayfire)  echo "Wayfire (Wayland)" ;;
+        i3)       echo "i3 Window Manager" ;;
+        qtile)    echo "Qtile" ;;
+        lxqt)     echo "LXQt" ;;
+        cosmic)   echo "COSMIC" ;;
+        *)        echo "$1" ;;
+    esac
+}
+
+# Function to check if a DE is installed (by checking for its session file)
+is_de_installed() {
+    local de="$1"
+    local session_var="DE_SESSION_${de^^}"
+    local session_name="${!session_var}"
+
+    if [[ -z "$session_name" ]]; then
+        return 1
+    fi
+
+    # Check both X11 and Wayland session directories
+    if [[ -f "/usr/share/xsessions/${session_name}.desktop" ]] || \
+       [[ -f "/usr/share/wayland-sessions/${session_name}.desktop" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Find the current kernel
+get_kernel_info() {
+    local kernel_dir="/boot"
+    local latest_kernel=""
+    local latest_initrd=""
+
+    # Look for vmlinuz files
+    for kernel in "${kernel_dir}"/vmlinuz-*; do
+        if [[ -f "$kernel" ]]; then
+            latest_kernel="$kernel"
+            local kernel_version="${kernel#${kernel_dir}/vmlinuz-}"
+
+            # Find matching initramfs
+            if [[ -f "${kernel_dir}/initramfs-${kernel_version}.img" ]]; then
+                latest_initrd="${kernel_dir}/initramfs-${kernel_version}.img"
+            elif [[ -f "${kernel_dir}/initrd.img-${kernel_version}" ]]; then
+                latest_initrd="${kernel_dir}/initrd.img-${kernel_version}"
+            fi
+        fi
+    done
+
+    echo "${latest_kernel}|${latest_initrd}"
+}
+
+# Generate submenu for DE selection
+generate_de_menu() {
+    local kernel_info
+    kernel_info=$(get_kernel_info)
+    local kernel="${kernel_info%|*}"
+    local initrd="${kernel_info#*|}"
+
+    if [[ -z "$kernel" ]]; then
+        echo "Warning: No kernel found" >&2
+        return
+    fi
+
+    # Make paths relative to /boot if needed
+    kernel="${kernel#/boot}"
+    initrd="${initrd#/boot}"
+
+    # Parse enabled DEs
+    IFS=',' read -ra DE_LIST <<< "$ENABLED_DES"
+
+    local has_installed_de=false
+    for de in "${DE_LIST[@]}"; do
+        de=$(echo "$de" | tr -d ' ')
+        if is_de_installed "$de"; then
+            has_installed_de=true
+            break
+        fi
+    done
+
+    if [[ "$has_installed_de" != "true" ]]; then
+        return
+    fi
+
+    cat << EOF
+submenu 'Garuda Linux - Desktop Environment Selection' {
+EOF
+
+    for de in "${DE_LIST[@]}"; do
+        de=$(echo "$de" | tr -d ' ')
+
+        if ! is_de_installed "$de"; then
+            continue
+        fi
+
+        local de_name
+        de_name=$(get_de_display_name "$de")
+
+        cat << EOF
+    menuentry 'Garuda Linux with ${de_name}' --class garuda --class gnu-linux --class os {
+        load_video
+        set gfxpayload=keep
+        insmod gzio
+        insmod part_gpt
+        insmod btrfs
+        search --no-floppy --fs-uuid --set=root ${GRUB_DEVICE_UUID}
+        linux ${kernel} root=UUID=${GRUB_DEVICE_UUID} ${GRUB_CMDLINE} ${BOOT_PARAM}=${de}
+        initrd ${initrd}
+    }
+EOF
+    done
+
+    cat << EOF
+}
+EOF
+}
+
+# Main execution
+generate_de_menu
