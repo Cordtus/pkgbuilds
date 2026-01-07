@@ -1,0 +1,45 @@
+# Maintainer: Garuda Linux Team
+# Description: Desktop Environment selector for Garuda Linux Test-Drive edition
+
+pkgname=garuda-de-selector
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Desktop Environment selector for Garuda Linux - enables boot-time and login DE selection'
+arch=('any')
+url="https://garudalinux.org"
+license=('GPL3')
+depends=('grub' 'bash' 'systemd')
+optdepends=(
+  'sddm: Recommended display manager with session selection'
+  'lightdm: Alternative display manager'
+)
+backup=('etc/garuda/de-selector.conf')
+install=$pkgname.install
+
+source=(
+  'de-selector.conf'
+  '15_garuda_de_selector'
+  'garuda-de-selector.sh'
+  'garuda-de-apply.service'
+  'garuda-de-apply.sh'
+  'sddm-de-selector.conf'
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  # Configuration file
+  install -Dm644 "$srcdir/de-selector.conf" "$pkgdir/etc/garuda/de-selector.conf"
+
+  # GRUB configuration script
+  install -Dm755 "$srcdir/15_garuda_de_selector" "$pkgdir/etc/grub.d/15_garuda_de_selector"
+
+  # Main DE selector script
+  install -Dm755 "$srcdir/garuda-de-selector.sh" "$pkgdir/usr/bin/garuda-de-selector"
+
+  # Systemd service and script for boot-time DE application
+  install -Dm644 "$srcdir/garuda-de-apply.service" "$pkgdir/usr/lib/systemd/system/garuda-de-apply.service"
+  install -Dm755 "$srcdir/garuda-de-apply.sh" "$pkgdir/usr/lib/garuda/de-apply.sh"
+
+  # SDDM configuration for session selection
+  install -Dm644 "$srcdir/sddm-de-selector.conf" "$pkgdir/etc/sddm.conf.d/10-de-selector.conf"
+}

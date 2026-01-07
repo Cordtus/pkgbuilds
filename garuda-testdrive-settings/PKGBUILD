@@ -1,0 +1,86 @@
+# Maintainer: Garuda Linux Team
+# Description: Garuda Linux Test-Drive edition - Multi-DE experience
+
+pkgname=garuda-testdrive-settings
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Garuda Linux Test-Drive edition - Experience multiple desktop environments'
+arch=('any')
+url="https://garudalinux.org"
+license=('GPL3')
+install=$pkgname.install
+
+# This package provides garuda-desktop-settings to satisfy dependencies
+# but allows multiple DEs to coexist
+provides=('garuda-desktop-settings')
+conflicts=('garuda-desktop-settings')
+
+depends=(
+  # Core components
+  'garuda-common-settings'
+  'garuda-de-selector'
+
+  # Display Manager - SDDM works well with all DEs
+  'sddm'
+  'sddm-theme-sweet-git'
+
+  # === KDE Plasma ===
+  'plasma-meta'
+  'kde-applications-meta'
+  'kvantum'
+  'kvantum-qt5'
+
+  # === GNOME ===
+  'gnome'
+  'gnome-extra'
+  'gnome-themes-extra'
+
+  # === XFCE ===
+  'xfce4'
+  'xfce4-goodies'
+
+  # Common fonts and themes
+  'ttf-fira-code'
+  'ttf-firacode-nerd'
+  'ttf-fira-sans'
+  'noto-fonts'
+  'noto-fonts-emoji'
+  'beautyline'
+  'volantes-cursors'
+
+  # Common utilities
+  'xdg-utils'
+  'xdg-user-dirs'
+)
+
+optdepends=(
+  # Additional DEs users can install
+  'cinnamon: Cinnamon desktop environment'
+  'mate: MATE desktop environment'
+  'mate-extra: Additional MATE applications'
+  'hyprland: Hyprland Wayland compositor'
+  'waybar: Status bar for Wayland compositors'
+  'sway: Sway Wayland compositor'
+  'wayfire: Wayfire Wayland compositor'
+  'i3-wm: i3 window manager'
+  'qtile: Qtile window manager'
+  'lxqt: LXQt desktop environment'
+)
+
+# Source files for configuration
+source=(
+  'testdrive-sddm.conf'
+  'testdrive-README.txt'
+)
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  # SDDM configuration for test-drive
+  install -Dm644 "$srcdir/testdrive-sddm.conf" "$pkgdir/etc/sddm.conf.d/20-testdrive.conf"
+
+  # Documentation
+  install -Dm644 "$srcdir/testdrive-README.txt" "$pkgdir/usr/share/doc/garuda-testdrive/README.txt"
+
+  # Create session override directory
+  install -d "$pkgdir/etc/garuda"
+}
