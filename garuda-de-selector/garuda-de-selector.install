@@ -1,0 +1,43 @@
+# Post-installation hooks for garuda-de-selector
+
+post_install() {
+    echo "==> Garuda DE Selector installed!"
+    echo ""
+    echo "    To enable boot-time DE selection:"
+    echo "    1. Run 'sudo update-grub' to add DE entries to GRUB menu"
+    echo "    2. Enable the service: sudo systemctl enable garuda-de-apply.service"
+    echo ""
+    echo "    Commands:"
+    echo "    - garuda-de-selector list     : List available DEs"
+    echo "    - garuda-de-selector set <DE> : Set default DE"
+    echo "    - garuda-de-selector current  : Show current DE"
+    echo ""
+
+    # Enable the systemd service
+    systemctl daemon-reload
+    systemctl enable garuda-de-apply.service 2>/dev/null || true
+
+    # Create state directory
+    mkdir -p /var/lib/garuda
+}
+
+post_upgrade() {
+    systemctl daemon-reload
+
+    echo "==> Garuda DE Selector upgraded!"
+    echo "    Run 'sudo update-grub' to refresh GRUB menu entries."
+}
+
+pre_remove() {
+    systemctl disable garuda-de-apply.service 2>/dev/null || true
+}
+
+post_remove() {
+    systemctl daemon-reload
+
+    # Clean up state file
+    rm -f /var/lib/garuda/last-de-selection
+
+    echo "==> Garuda DE Selector removed."
+    echo "    Run 'sudo update-grub' to remove DE entries from GRUB menu."
+}
